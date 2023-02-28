@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.util.List;
+import java.util.Map;
 
 import javax.swing.JOptionPane;
 
@@ -16,19 +18,19 @@ public class ClientReceive extends Thread {
 
 	private Socket socket;
 	private Gson gson;
-	
+
 	public ClientReceive(Socket socket) {
 		this.socket = socket;
 		gson = new Gson();
 	}
-	
+
 	@Override
 	public void run() {
-		
+
 		try {
 			InputStream inputStream = socket.getInputStream();
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-			while(true) {
+			while (true) {
 				String responseJson = bufferedReader.readLine();
 				responseMapping(responseJson);
 			}
@@ -36,7 +38,7 @@ public class ClientReceive extends Thread {
 			e.printStackTrace();
 		}
 	}
-	
+
 	private void responseMapping(String responseJson) {
 		ResponseDto<?> responseDto = gson.fromJson(responseJson, ResponseDto.class);
 		switch (responseDto.getResource()) {
@@ -45,15 +47,39 @@ public class ClientReceive extends Thread {
 //			break;
 			// usernameCheckIsBlank 또는 usernameCheckIsDuplicate 넘어오면 아래 실행(or처럼 처리)
 		case "usernameCheckIsDuplicate":
-			JOptionPane.showMessageDialog(null, (String)responseDto.getBody(), "접속오류", JOptionPane.WARNING_MESSAGE);
+			JOptionPane.showMessageDialog(null, (String) responseDto.getBody(), "접속오류", JOptionPane.WARNING_MESSAGE);
 			break;
-			
+
 		case "usernameCheckSuccessfully":
-			
+			ClientApplication.getInstance().getMainCard().show(ClientApplication.getInstance().getMainPanel(),
+					"roomListPanel");
+			break;
+
+		case "refreshRoomList":
+			refreshRoomList((List<Map<String, String>>) responseDto.getBody());
 			break;
 			
-		default:
+		case "createRoomSuccessfully":
+			ClientApplication.getInstance().getMainCard().show(ClientApplication.getInstance().getMainPanel(),
+					"roomPanel");
+			break;
+			
+		case "refreshUsernameList":
+			refreshUsernameList((List<String>) responseDto.getBody());
 			break;
 		}
+	}
+
+	private void refreshRoomList(List<Map<String, String>> roomList) {
+		ClientApplication.getInstance().getRoomNameListModel().clear();
+		ClientApplication.getInstance().setRoomInfoList(roomList);
+		for(Map<String, String> roomInfo : roomList) {
+			ClientApplication.getInstance().getRoomNameListModel().addElement(roomInfo.get("roomName"));
+		}
+	}
+	
+	private void refreshUsernameList(List<String> usernameList) {
+		ClientApplication.getInstance().getUserNameListModel().clear();
+		ClientApplication.getInstance().getUserNameListModel().addAll(usernameList);
 	}
 }
